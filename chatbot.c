@@ -510,7 +510,7 @@ int chatbot_do_save(int inc, char *inv[], char *response, int n) {
     knowledge_write(file);
     fclose(file);
 
-    snprintf(response, n, "I have successfully saved my knowledge to %s.", filename);
+    snprintf(response, n, "My knowledge has been saved to %s.", filename);
     return 0;
 }
 
