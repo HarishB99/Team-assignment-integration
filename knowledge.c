@@ -38,7 +38,7 @@ int knowledge_get(const char *intent, const char *entity, char *response, int n)
       pointerWho = headWho;
       do{
         if(compare_token(pointerWho -> entity, entity) == 0){
-          strncpy(response, pointerWho->response , n);
+          strncpy(response, pointerWho->response , n);          
           return KB_OK;
         }
         pointerWho = pointerWho->next;
@@ -106,7 +106,6 @@ int knowledge_get(const char *intent, const char *entity, char *response, int n)
  *   KB_INVALID, if the intent is not a valid question word
  */
 int knowledge_put(const char *intent, const char *entity, const char *response) {
-
     if (compare_token(intent, "what") == 0) {
         NODE *next, *prev;
         // NODE temp = { 
@@ -114,7 +113,7 @@ int knowledge_put(const char *intent, const char *entity, const char *response) 
         //   (char *)malloc(sizeof(char) * strlen(entity)), 
         //   (char *)malloc(sizeof(char) * strlen(response)), 
         //   NULL 
-        // };
+        // };        
 
         NODE *temp = (NODE *)malloc(sizeof(NODE));
 
@@ -138,6 +137,10 @@ int knowledge_put(const char *intent, const char *entity, const char *response) 
             next = headWhat;
 
             while (next) {
+                if (compare_token(temp->entity, next->entity) == 0) {
+                    strcpy(next->response, temp->response);
+                    return KB_OK;
+                }
                 prev = next;
                 next = next->next;
             }
@@ -168,6 +171,10 @@ int knowledge_put(const char *intent, const char *entity, const char *response) 
             next = headWhere;
 
             while (next) {
+                if (compare_token(temp->entity, next->entity) == 0) {
+                    strcpy(next->response, temp->response);
+                    return KB_OK;
+                }
                 prev = next;
                 next = next->next;
             }
@@ -199,13 +206,17 @@ int knowledge_put(const char *intent, const char *entity, const char *response) 
             next = headWho;
 
             while (next) {
+                if (compare_token(temp->entity, next->entity) == 0) {
+                    strcpy(next->response, temp->response);
+                    return KB_OK;
+                }
                 prev = next;
                 next = next->next;
             }
 
             prev->next = temp;
         }
-    } else {
+    } else {      
         return KB_INVALID;
     }
     return KB_OK;
@@ -224,32 +235,29 @@ int knowledge_read(FILE *f) {
 
   int count = 0;
   char *result;
-  size_t MAX_SIZE = MAX_INTENT;
-  char *line = malloc(MAX_SIZE * sizeof(char));  
+  size_t MAX_SIZE = MAX_RESPONSE;
+  char *line = malloc(MAX_SIZE * sizeof(char));
   char intent[MAX_INTENT];
   char entity[MAX_ENTITY];
   char response[MAX_RESPONSE];
   
 
-  while(getline(&line, &MAX_SIZE, f) != KB_NOTFOUND){
-    if(strstr(line, "what")){
+  while(getline(&line, &MAX_SIZE, f) != KB_NOTFOUND){    //keep reading next line until -1
+    if(strstr(line, "where")){ // checks the string if contains word where
+      strcpy(intent, "WHERE");
+    }    
+    else if(strstr(line, "what")){ //checking
       strcpy(intent, "WHAT");
     }
-    else if(strstr(line, "where")){
-      strcpy(intent, "WHERE");
-    }
-    else if(strstr(line, "who")){
+    else if(strstr(line, "who")){ //checking
       strcpy(intent, "WHO");
     }
-    if(strchr(line, '=')){
-      result = strtok(line,"=");
-      strcpy(entity, result);
+    if(strchr(line, '=')){      
+      result = strtok(line,"=");      // splits string by delimeter =
+      strcpy(entity, result);   // copies content of left portion of string into entity
       result = strtok(NULL, "=");      
-      strcpy(response, result);
-      knowledge_put(intent, entity, response);
-      // printf("%s\n", intent);
-      // printf("%s\n", entity);
-      // printf("%s\n", response);
+      strcpy(response, result); //copies content of right portion of string into entity
+      knowledge_put(intent, entity, response);        
       count++;
     }
   }
@@ -353,10 +361,6 @@ void knowledge_write(FILE *f) {
     NODE *ptr_what = headWhat,
         *ptr_where = headWhere,
         *ptr_who = headWho;
-
-    printf("ptr_what == NULL = %d\n", ptr_what == NULL);
-    printf("ptr_where == NULL = %d\n", ptr_where == NULL);
-    printf("ptr_who == NULL = %d\n", ptr_who == NULL);
 
     fprintf(f, "[what]\n");
     while (ptr_what != NULL) {

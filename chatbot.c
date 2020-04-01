@@ -321,8 +321,7 @@ int chatbot_do_load(int inc, char *inv[], char *response, int n) {
     }else{      
       strcpy(file, inv[1]);
       f = fopen(file, "r");
-      if(f != NULL){      
-
+      if(f != NULL){
         count = knowledge_read(f);
         fclose(f);      
         snprintf(response, n, "Read %d responses from %s", count, inv[1]);        
@@ -382,6 +381,7 @@ int chatbot_do_question(int inc, char *inv[], char *response, int n) {
   char usernoun[MAX_INPUT];
   int get_reply_code;
   int put_reply_code;
+  char result[255] = {0};
 
   if (inc == 1){
     snprintf(response, n, "Please complete your question.");
@@ -389,20 +389,27 @@ int chatbot_do_question(int inc, char *inv[], char *response, int n) {
 
     if (compare_token(inv[1], "is") == 0 || compare_token(inv[1], "are") == 0){
 
-        strncpy(usernoun, inv[1], sizeof(usernoun)/sizeof(usernoun[0]));
+        strncpy(usernoun, inv[1], sizeof(usernoun)/sizeof(usernoun[0]));        
         for (i=0;i < inc-1 ; i++){
           inv[i] = inv[i+1];
   }
-      i--;
+      // i--;
+      inc--;
 
         for (i=1;i <inc;i++){
           // strncpy(userentity, inv[i], sizeof(userentity)/sizeof(userentity[i]));
           
-          strcat(strcat(userentity, " "), inv[i]);
-      
-    }
-     memmove(userentity, userentity+1,strlen(userentity));
-     
+          // strcat(strcat(userentity, " "), inv[i]);                    
+          if(i == inc-1){
+            strcat(result, inv[i]);
+          }else{
+            strcat(result, inv[i]);
+            strcat(result, " ");                    
+          }
+    }   
+    strcpy(userentity, result);    
+    //  memmove(userentity, userentity+1,strlen(userentity));         
+     printf("%s\n", result);
        }
       
 else{
@@ -418,7 +425,6 @@ else{
     }else if(get_reply_code == KB_NOTFOUND){
       if (compare_token(inv[1], "is") == 0){
         if (compare_token(userintent,"who")==0){
-          printf("Please Complete statement:%s\n", inv[1]);
           snprintf(response, n, "Please complete your question. Etc('Who is the president of singapore')");
         }
         else if (compare_token(userintent,"what")==0){          
@@ -429,10 +435,10 @@ else{
         }
       }
       else{
-        printf("I don't know statement:[1]%s\n", inv[1]);
+        printf("I don't know statement:[1]%s\n", userentity);
         userintent[0] = toupper(userintent[0]);
         if (inc ==2){
-            snprintf(response, n, "I don't know. %s is %s?", userintent,  userentity); 
+            snprintf(response, n, "I don't know. %s is %s?", userintent,  userentity);             
 
 
         }
@@ -584,17 +590,20 @@ int chatbot_is_save(const char *intent) {
  *   0 (the chatbot always continues chatting after saving knowledge)
  */
 int chatbot_do_save(int inc, char *inv[], char *response, int n) {
-    char *filename;
+    char *filename = "";
+
     if (inc < 2) {
         snprintf(response, n, "Please provide a name for the file to save my knowledge to.");
         return 0;
     } else {
-        int second_word_is_part_of_speech = compare_token(inv[1], "as") == 0
-         || compare_token(inv[1], "to") == 0;
-          
-        if (second_word_is_part_of_speech) {
+        if (compare_token(inv[1], "as") == 0 || compare_token(inv[1], "to") == 0) {
             if (inc == 2) {
                 snprintf(response, n, "Please provide a name for the file to save my knowledge to.");
+                return 0;
+            }
+            filename = (char *)malloc(sizeof(char) * strlen(filename));
+            if (filename == NULL) {
+                snprintf(response, n, "I am out of memory.");
                 return 0;
             }
             strcpy(filename, inv[2]);
@@ -605,6 +614,11 @@ int chatbot_do_save(int inc, char *inv[], char *response, int n) {
                 }
             }
         } else {
+            filename = (char *)malloc(sizeof(char) * strlen(filename));
+            if (filename == NULL) {
+                snprintf(response, n, "I am out of memory.");
+                return 0;
+            }
             strcpy(filename, inv[1]);
             if (inc > 2) {
                 for (int k = 2; k < inc; k++) {
@@ -626,6 +640,7 @@ int chatbot_do_save(int inc, char *inv[], char *response, int n) {
     fclose(file);
 
     snprintf(response, n, "I have successfully saved my knowledge to %s.", filename);
+    free(filename);
     return 0;
 }
 
