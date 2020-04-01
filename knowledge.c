@@ -33,10 +33,59 @@
  */
 int knowledge_get(const char *intent, const char *entity, char *response, int n) {
 
-	if (compare_token(intent, "who")){
-    
+	if (compare_token(intent, "who")==0){
+    if (headWho != NULL){
+      pointerWho = headWho;
+      do{
+        if(compare_token(pointerWho -> entity, entity) == 0){
+          strncpy(response, pointerWho->response , n);
+          return KB_OK;
+        }
+        pointerWho = pointerWho->next;
+      }while (pointerWho);
+      return KB_NOTFOUND;
+    }
+    else{
+      return KB_NOTFOUND;
+
+    }    
   }
-	return KB_NOTFOUND;
+  if (compare_token(intent,"what")==0){
+    if (headWhat != NULL){
+      pointerWhat = headWhat;
+      do{
+        if (compare_token(pointerWhat -> entity, entity)==0){
+          strncpy(response, pointerWhat->response, n);
+          return KB_OK;
+        }
+        pointerWhat = pointerWhat->next;
+      }while (pointerWhat);
+      return KB_NOTFOUND;
+    }
+    else{
+      return KB_NOTFOUND;
+    }
+  }
+
+  if (compare_token(intent,"where")==0){
+    if(headWhere != NULL){
+      pointerWhere = headWhere;
+      do{
+        if (compare_token(pointerWhere -> entity, entity) == 0){
+          strncpy(response, pointerWhere->response, n);
+          return KB_OK;
+        }
+        pointerWhere = pointerWhere-> next;
+      }while (pointerWhere);
+      return KB_NOTFOUND;
+    }
+    else{
+      return KB_NOTFOUND;
+    }
+  }
+
+	  return KB_INVALID;
+
 
 }
 
@@ -58,10 +107,108 @@ int knowledge_get(const char *intent, const char *entity, char *response, int n)
  */
 int knowledge_put(const char *intent, const char *entity, const char *response) {
 
-	/* to be implemented */
+    if (compare_token(intent, "what") == 0) {
+        NODE *next, *prev;
+        // NODE temp = { 
+        //   "what", 
+        //   (char *)malloc(sizeof(char) * strlen(entity)), 
+        //   (char *)malloc(sizeof(char) * strlen(response)), 
+        //   NULL 
+        // };
 
-	return KB_INVALID;
+        NODE *temp = (NODE *)malloc(sizeof(NODE));
 
+        temp->intent = (char *)malloc(sizeof(char) * strlen(intent));
+        temp->entity = (char *)malloc(sizeof(char) * strlen(entity));
+        temp->response = (char *)malloc(sizeof(char) * strlen(response));
+
+        if (temp == NULL || temp->intent == NULL || temp->entity == NULL || temp->response == NULL) {
+            return KB_NOMEM;
+        }
+
+        strcpy(temp->intent, intent);
+        strcpy(temp->entity, entity);
+        strcpy(temp->response, response);
+        temp->next = NULL;
+
+        if (!headWhat) {
+            headWhat = temp;
+        } else {
+            prev = NULL;
+            next = headWhat;
+
+            while (next) {
+                prev = next;
+                next = next->next;
+            }
+
+            prev->next = temp;
+        }
+    } else if (compare_token(intent, "where") == 0) {
+        NODE *next, *prev;
+        NODE *temp = (NODE *)malloc(sizeof(NODE));
+
+        temp->intent = (char *)malloc(sizeof(char) * strlen(intent));
+        temp->entity = (char *)malloc(sizeof(char) * strlen(entity));
+        temp->response = (char *)malloc(sizeof(char) * strlen(response));
+
+        if (temp == NULL || temp->intent == NULL || temp->entity == NULL || temp->response == NULL) {
+            return KB_NOMEM;
+        }
+
+        strcpy(temp->intent, intent);
+        strcpy(temp->entity, entity);
+        strcpy(temp->response, response);
+        temp->next = NULL;
+
+        if (!headWhere) {
+            headWhere = temp;
+        } else {
+            prev = NULL;
+            next = headWhere;
+
+            while (next) {
+                prev = next;
+                next = next->next;
+            }
+
+            prev->next = temp;
+        }
+    } else if (compare_token(intent, "who") == 0) {
+        NODE *next, *prev;
+
+        NODE *temp = (NODE *)malloc(sizeof(NODE));
+
+        temp->intent = (char *)malloc(sizeof(char) * strlen(intent));
+        temp->entity = (char *)malloc(sizeof(char) * strlen(entity));
+        temp->response = (char *)malloc(sizeof(char) * strlen(response));
+
+        if (temp == NULL || temp->intent == NULL || temp->entity == NULL || temp->response == NULL) {
+            return KB_NOMEM;
+        }
+
+        strcpy(temp->intent, intent);
+        strcpy(temp->entity, entity);
+        strcpy(temp->response, response);
+        temp->next = NULL;
+
+        if (!headWho) {
+            headWho = temp;
+        } else {
+            prev = NULL;
+            next = headWho;
+
+            while (next) {
+                prev = next;
+                next = next->next;
+            }
+
+            prev->next = temp;
+        }
+    } else {
+        return KB_INVALID;
+    }
+    return KB_OK;
 }
 
 
@@ -75,18 +222,123 @@ int knowledge_put(const char *intent, const char *entity, const char *response) 
  */
 int knowledge_read(FILE *f) {
 
-	int count = 0;
+  int count = 0;
+  char *result;
+  size_t MAX_SIZE = MAX_INTENT;
+  char *line = malloc(MAX_SIZE * sizeof(char));  
+  char intent[MAX_INTENT];
+  char entity[MAX_ENTITY];
+  char response[MAX_RESPONSE];
+  
 
-	return count;
+  while(getline(&line, &MAX_SIZE, f) != KB_NOTFOUND){
+    if(strstr(line, "what")){
+      strcpy(intent, "WHAT");
+    }
+    else if(strstr(line, "where")){
+      strcpy(intent, "WHERE");
+    }
+    else if(strstr(line, "who")){
+      strcpy(intent, "WHO");
+    }
+    if(strchr(line, '=')){
+      result = strtok(line,"=");
+      strcpy(entity, result);
+      result = strtok(NULL, "=");      
+      strcpy(response, result);
+      knowledge_put(intent, entity, response);
+      // printf("%s\n", intent);
+      // printf("%s\n", entity);
+      // printf("%s\n", response);
+      count++;
+    }
+  }
+  
+  free(line);
+  return count;
+  
 }
 
 
 /*
  * Reset the knowledge base, removing all know entitities from all intents.
  */
-void knowledge_reset() {
+int knowledge_reset(NODE *head) {
 
-	/* to be implemented */
+  //printf("chatbot_do_reset is starting...\n");
+    
+    if (head!=NULL) {
+      //NODE *pointer = malloc(sizeof(NODE));
+      //NODE *pointer;
+      NODE *pointer = head;
+        while (pointer != NULL){
+          printf("removing %s from %s \n",head->entity, head->intent);
+          head = head -> next;
+          free(pointer);
+          pointer = head;
+          //printf("looped \n");
+            
+        }
+        //printf("Reset Finish! \n");
+        return 1;
+    }else{
+      //printf("Nothing to reset.\n");
+      return 0;
+    }
+  /*
+
+    strcpy(response,"chatbot_do_reset is starting...\n");
+    
+    if (headWhat!=NULL) {
+      
+      
+      NODE *pointer = malloc(sizeof(NODE));
+        do{
+          headWhat = headWhat -> next;
+           free(pointer);
+          pointer = headWhat;
+          
+            
+        }while (headWhat != NULL);
+        snprintf(response, n, "headWhat Reset Finish! \n");
+        
+    }else{
+      snprintf(response, n, "Nothing to reset for headWho. \n");
+      
+    }if (headWho!=NULL) {
+      
+      
+      NODE *pointer = malloc(sizeof(NODE));
+        do{
+          headWho = headWho -> next;
+           free(pointer);
+          pointer = headWho;
+          
+            
+        }while (headWho != NULL);
+        snprintf(response, n, "headWho Reset Finish! \n");
+        
+    }else{
+      snprintf(response, n, "Nothing to reset for headWho. \n");
+      
+    }if (headWhere!=NULL) {
+      
+      
+      NODE *pointer = malloc(sizeof(NODE));
+        do{
+          headWhere = headWhere -> next;
+           free(pointer);
+          pointer = headWhat;
+          
+            
+        }while (headWhere != NULL);
+        snprintf(response, n, "headWhere Reset Finish!");
+        
+    }else{
+      snprintf(response, n, "Nothing to reset for headWhere.");
+      
+    }
+    */
 
 }
 
@@ -98,25 +350,32 @@ void knowledge_reset() {
  *   f - the file
  */
 void knowledge_write(FILE *f) {
-    NODE ptr_what = *headWhat, 
-        ptr_where = *headWhere, 
-        ptr_who = *headWho;
+    NODE *ptr_what = headWhat,
+        *ptr_where = headWhere,
+        *ptr_who = headWho;
+
+    printf("ptr_what == NULL = %d\n", ptr_what == NULL);
+    printf("ptr_where == NULL = %d\n", ptr_where == NULL);
+    printf("ptr_who == NULL = %d\n", ptr_who == NULL);
 
     fprintf(f, "[what]\n");
-    while (ptr_what.next) {
-      fprintf(f, "%s=%s\n", ptr_what.entity, ptr_what.response);
+    while (ptr_what != NULL) {
+        fprintf(f, "%s=%s\n", ptr_what->entity, ptr_what->response);
+        ptr_what = ptr_what->next;
     }
     fprintf(f, "\n");
 
     fprintf(f, "[where]\n");
-    while (ptr_where.next) {
-      fprintf(f, "%s=%s\n", ptr_where.entity, ptr_where.response);
+    while (ptr_where != NULL) {
+        fprintf(f, "%s=%s\n", ptr_where->entity, ptr_where->response);
+        ptr_where = ptr_where->next;
     }
     fprintf(f, "\n");
 
     fprintf(f, "[who]\n");
-    while (ptr_who.next) {
-      fprintf(f, "%s=%s\n", ptr_who.entity, ptr_who.response);
+    while (ptr_who != NULL) {
+        fprintf(f, "%s=%s\n", ptr_who->entity, ptr_who->response);
+        ptr_who = ptr_who->next;
     }
     fprintf(f, "\n");
 }

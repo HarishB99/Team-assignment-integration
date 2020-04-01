@@ -16,6 +16,20 @@
 /* word delimiters */
 const char *delimiters = " ?\t\n";
 
+NODE *headWhat = NULL;
+NODE *headWhere = NULL;
+NODE *headWho = NULL;
+
+/*
+NODE what = {"", "", "", NULL},
+	where = {"", "", "", NULL},
+	who = {"", "", "", NULL};
+
+NODE *headWhat = &what, 
+	*headWhere = &where, 
+	*headWho = &who;
+  */
+  //*headWhat = {"test", "abc", "cdf", NULL};
 
 /*
  * Main loop.

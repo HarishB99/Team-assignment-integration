@@ -9,7 +9,7 @@
 #define _CHAT1002_H
 
 #include <stdio.h>
-
+#include <errno.h>
 /* the maximum number of characters we expect in a line of input (including the terminating null)  */
 #define MAX_INPUT    256
 
@@ -20,19 +20,23 @@
 #define MAX_ENTITY   64
 
 /* the maximum number of characters allowed in a response (including the terminating null) */
-#define MAX_RESPONSE 256
+#define MAX_RESPONSE 700
 
 
 //creating a link-listed node
-typedef struct node{
-  char intent[MAX_INTENT]; // insert who, what, where
-  char entity[MAX_ENTITY]; // rest of the question
-  char response[MAX_RESPONSE]; // response to the question
+struct node {
+  char *intent; // insert who, what, where
+  char *entity; // rest of the question
+  char *response; // response to the question
   struct node *next; // putting it into a list
-}NODE;
+};
 
-NODE *headWhat, *headWho, *headWhere; // head of the list
-NODE *pointer; // pointing whatever you want
+typedef struct node NODE;
+
+extern NODE *headWhat;
+extern NODE *headWho;
+extern NODE *headWhere; // head of the list
+NODE *pointerWho, *pointerWhat, *pointerWhere; // pointing whatever you want
 
 /* return codes for knowledge_get() and knowledge_put() */
 #define KB_OK        0
@@ -41,9 +45,9 @@ NODE *pointer; // pointing whatever you want
 #define KB_NOMEM    -3
 
 /* the maximum number of elements in the trigger array in chatbot.c for is_smalltalk */
-#define MAX_TRIGGER_SIZE    8
+#define MAX_TRIGGER_SIZE    9
 
-#define MAX_SMALLTALK_SIZE    35
+#define MAX_SMALLTALK_SIZE    64
 
 /* functions defined in main.c */
 int compare_token(const char *token1, const char *token2);
@@ -69,7 +73,7 @@ int chatbot_do_smalltalk(int inc, char *full_input, char *response, int n);
 /* functions defined in knowledge.c */
 int knowledge_get(const char *intent, const char *entity, char *response, int n);
 int knowledge_put(const char *intent, const char *entity, const char *response);
-void knowledge_reset();
+int knowledge_reset();
 int knowledge_read(FILE *f);
 void knowledge_write(FILE *f);
 
