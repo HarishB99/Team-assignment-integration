@@ -12,6 +12,74 @@
  * You may add helper functions as necessary.
  */
 
+
+
+
+
+/* The original code is public domain -- Will Hartung 4/9/09 */
+/* Modifications, public domain as well, by Antti Haapala, 11/10/17
+   - Switched to getc on 5/23/19 */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <stdint.h>
+
+// if typedef doesn't exist (msvc, blah)
+typedef intptr_t ssize_t;
+
+ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
+    size_t pos;
+    int c;
+
+    if (lineptr == NULL || stream == NULL || n == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    c = getc(stream);
+    if (c == EOF) {
+        return -1;
+    }
+
+    if (*lineptr == NULL) {
+        *lineptr = malloc(128);
+        if (*lineptr == NULL) {
+            return -1;
+        }
+        *n = 128;
+    }
+
+    pos = 0;
+    while(c != EOF) {
+        if (pos + 1 >= *n) {
+            size_t new_size = *n + (*n >> 2);
+            if (new_size < 128) {
+                new_size = 128;
+            }
+            char *new_ptr = realloc(*lineptr, new_size);
+            if (new_ptr == NULL) {
+                return -1;
+            }
+            *n = new_size;
+            *lineptr = new_ptr;
+        }
+
+        ((unsigned char *)(*lineptr))[pos ++] = c;
+        if (c == '\n') {
+            break;
+        }
+        c = getc(stream);
+    }
+
+    (*lineptr)[pos] = '\0';
+    return pos;
+}
+
+
+
+
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -33,10 +101,25 @@
  */
 int knowledge_get(const char *intent, const char *entity, char *response, int n) {
 
-	if (compare_token(intent, "who")){
-    
+	if (compare_token(intent, "who")==0){
+    if (headWho != NULL){
+      pointerWho = headWho;
+      do{
+        if(compare_token(pointerWho -> entity, entity) == 0){
+          strncpy(response, pointerWho->response , n);
+          return KB_OK;
+        }
+        pointerWho = pointerWho->next;
+      }while (pointerWho);
+      return KB_NOTFOUND;
+    }
+    else{
+      return KB_NOTFOUND;
+
+    }    
   }
-	return KB_NOTFOUND;
+	return KB_INVALID;
+
 
 }
 
@@ -57,16 +140,33 @@ int knowledge_get(const char *intent, const char *entity, char *response, int n)
  *   KB_INVALID, if the intent is not a valid question word
  */
 int knowledge_put(const char *intent, const char *entity, const char *response) {
-    NODE *next, *prev;
 
     if (compare_token(intent, "what") == 0) {
-        NODE temp = { "", "", "", NULL };
-        strcpy(temp.intent, intent);
-        strcpy(temp.entity, entity);
-        strcpy(temp.response, response);
+        NODE *next, *prev;
+        // NODE temp = { 
+        //   "what", 
+        //   (char *)malloc(sizeof(char) * strlen(entity)), 
+        //   (char *)malloc(sizeof(char) * strlen(response)), 
+        //   NULL 
+        // };
 
-        if (strlen(headWhat->intent) == 0) {
-            *headWhat = temp;
+        NODE *temp = (NODE *)malloc(sizeof(NODE));
+
+        temp->intent = (char *)malloc(sizeof(char) * strlen(intent));
+        temp->entity = (char *)malloc(sizeof(char) * strlen(entity));
+        temp->response = (char *)malloc(sizeof(char) * strlen(response));
+
+        if (temp == NULL || temp->intent == NULL || temp->entity == NULL || temp->response == NULL) {
+            return KB_NOMEM;
+        }
+
+        strcpy(temp->intent, intent);
+        strcpy(temp->entity, entity);
+        strcpy(temp->response, response);
+        temp->next = NULL;
+
+        if (!headWhat) {
+            headWhat = temp;
         } else {
             prev = NULL;
             next = headWhat;
@@ -76,16 +176,27 @@ int knowledge_put(const char *intent, const char *entity, const char *response) 
                 next = next->next;
             }
 
-            *(prev->next) = temp;
+            prev->next = temp;
         }
     } else if (compare_token(intent, "where") == 0) {
-        NODE temp = { "", "", "", NULL };
-        strcpy(temp.intent, intent);
-        strcpy(temp.entity, entity);
-        strcpy(temp.response, response);
+        NODE *next, *prev;
+        NODE *temp = (NODE *)malloc(sizeof(NODE));
 
-        if (strlen(headWhere->intent) == 0) {
-            *headWhere = temp;
+        temp->intent = (char *)malloc(sizeof(char) * strlen(intent));
+        temp->entity = (char *)malloc(sizeof(char) * strlen(entity));
+        temp->response = (char *)malloc(sizeof(char) * strlen(response));
+
+        if (temp == NULL || temp->intent == NULL || temp->entity == NULL || temp->response == NULL) {
+            return KB_NOMEM;
+        }
+
+        strcpy(temp->intent, intent);
+        strcpy(temp->entity, entity);
+        strcpy(temp->response, response);
+        temp->next = NULL;
+
+        if (!headWhere) {
+            headWhere = temp;
         } else {
             prev = NULL;
             next = headWhere;
@@ -95,16 +206,28 @@ int knowledge_put(const char *intent, const char *entity, const char *response) 
                 next = next->next;
             }
 
-            *(prev->next) = temp;
+            prev->next = temp;
         }
     } else if (compare_token(intent, "who") == 0) {
-        NODE temp = { "", "", "", NULL };
-        strcpy(temp.intent, intent);
-        strcpy(temp.entity, entity);
-        strcpy(temp.response, response);
+        NODE *next, *prev;
 
-        if (strlen(headWho->intent) == 0) {
-            *headWho = temp;
+        NODE *temp = (NODE *)malloc(sizeof(NODE));
+
+        temp->intent = (char *)malloc(sizeof(char) * strlen(intent));
+        temp->entity = (char *)malloc(sizeof(char) * strlen(entity));
+        temp->response = (char *)malloc(sizeof(char) * strlen(response));
+
+        if (temp == NULL || temp->intent == NULL || temp->entity == NULL || temp->response == NULL) {
+            return KB_NOMEM;
+        }
+
+        strcpy(temp->intent, intent);
+        strcpy(temp->entity, entity);
+        strcpy(temp->response, response);
+        temp->next = NULL;
+
+        if (!headWho) {
+            headWho = temp;
         } else {
             prev = NULL;
             next = headWho;
@@ -114,7 +237,7 @@ int knowledge_put(const char *intent, const char *entity, const char *response) 
                 next = next->next;
             }
 
-            *(prev->next) = temp;
+            prev->next = temp;
         }
     } else {
         return KB_INVALID;
@@ -132,10 +255,39 @@ int knowledge_put(const char *intent, const char *entity, const char *response) 
  * Returns: the number of entity/response pairs successful read from the file
  */
 int knowledge_read(FILE *f) {
+  int count = 0;
+  char *result;
+  size_t MAX_SIZE = MAX_INTENT;
+  char *line = malloc(MAX_SIZE * sizeof(char));  
+  char intent[MAX_INTENT];
+  char entity[MAX_ENTITY];
+  char response[MAX_RESPONSE];
 
-	int count = 0;
-
-	return count;
+  while(getline(&line, &MAX_SIZE, f) != KB_NOTFOUND){
+    if(strstr(line, "what")){
+      strcpy(intent, "WHAT");
+    }
+    else if(strstr(line, "where")){
+      strcpy(intent, "WHERE");
+    }
+    else if(strstr(line, "who")){
+      strcpy(intent, "WHO");
+    }
+    if(strchr(line, '=')){
+      result = strtok(line,"=");
+      strcpy(entity, result);
+      result = strtok(NULL, "=");      
+      strcpy(response, result);
+      knowledge_put(intent, entity, response);
+      // printf("%s\n", intent);
+      // printf("%s\n", entity);
+      // printf("%s\n", response);
+      count++;
+    }
+  }
+  
+  free(line);
+  return count;
 }
 
 

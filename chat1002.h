@@ -9,7 +9,7 @@
 #define _CHAT1002_H
 
 #include <stdio.h>
-
+#include <errno.h>
 /* the maximum number of characters we expect in a line of input (including the terminating null)  */
 #define MAX_INPUT    256
 
@@ -25,14 +25,15 @@
 
 //creating a link-listed node
 typedef struct node{
-  char intent[MAX_INTENT]; // insert who, what, where
-  char entity[MAX_ENTITY]; // rest of the question
-  char response[MAX_RESPONSE]; // response to the question
+  char *intent; // insert who, what, where
+  char *entity; // rest of the question
+  char *response; // response to the question
   struct node *next; // putting it into a list
 } NODE;
 
-extern NODE *headWhat, *headWho, *headWhere; // head of the list
-NODE *pointer; // pointing whatever you want
+NODE *headWhat, *headWho, *headWhere; // head of the list
+NODE *pointerWho, *pointerWhat, *pointerWhere; // pointing whatever you want
+NODE *pointer;
 
 /* return codes for knowledge_get() and knowledge_put() */
 #define KB_OK        0

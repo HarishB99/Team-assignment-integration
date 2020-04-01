@@ -46,6 +46,14 @@
 #include <stdlib.h>
 #include "chat1002.h"
 
+/* 
+ * A structure called Dictionary
+ *  @key - The key string of a pair(unique)
+ *
+ *  @value - The value corresponding to * a key (Not unique)
+ * 
+ *  @next: Pointer to next node of the * Dictionary
+ */
 typedef struct Dictionary {
     char *key;
     char *value;
@@ -56,15 +64,18 @@ typedef struct {
     Dictionary **smalltalks;
 } Hashtable;
 
+
 unsigned int hash(const char *key) {
     unsigned long int value = 0;
     unsigned int i = 0;
     unsigned int key_length = strlen(key);
 
+	// do multiple rounds of multiplications
     for (; i < key_length; ++i) {
         value = value * 37 + key[i];
     }
 
+	// ensure 0 <= value < MAX_SMALLTALK_SIZE
     value = value % MAX_SMALLTALK_SIZE;
 
     return value;
@@ -86,6 +97,10 @@ Dictionary *hashtable_pair(const char *key, const char *value) {
     return smalltalks;
 }
 
+/*
+ * Creates a hashtable where all entries are originally set to null.
+ * Used in chatbot_do_smalltalk before being able to insert smalltalks into the chatbot
+ */
 Hashtable *hashtable_create(void) {
     // allocate table
     Hashtable *hashtable = malloc(sizeof(Hashtable) * 1);
@@ -101,6 +116,11 @@ Hashtable *hashtable_create(void) {
     return hashtable;
 }
 
+
+/*
+ * This function is used whenever we want to add smalltalk into the hashtable.
+ * Before we can use this function, we must first do hashtable_create();
+ */
 void hashtable_set(Hashtable *hashtable, const char *key, const char *value) {
     unsigned int slot = hash(key);
 
@@ -115,7 +135,7 @@ void hashtable_set(Hashtable *hashtable, const char *key, const char *value) {
 
     Dictionary *prev;
 
-    /* Walk through each smalltalk until either the   * end is reached or a matching key is found
+    /* Walk through each smalltalk until either the end is reached or a matching key is found
      */
     while (smalltalk != NULL) {
         // check key
@@ -136,6 +156,10 @@ void hashtable_set(Hashtable *hashtable, const char *key, const char *value) {
     prev->next = hashtable_pair(key, value);
 }
 
+/*
+ * print_smalltalk() is responsible for printing the response (value) based on what the smalltalk (key) is that user input. 
+ * If the smalltalk is "bye", it returns 1 so that the chatbot can end 
+ */
 int print_smalltalk(Hashtable *hashtable, char *full_input, char *response, int n) {
     for (int i = 0; i < MAX_SMALLTALK_SIZE; ++i) {
         Dictionary *smalltalk = hashtable->smalltalks[i];
@@ -289,20 +313,23 @@ int chatbot_is_load(const char *intent) {
  */
 int chatbot_do_load(int inc, char *inv[], char *response, int n) {
     FILE *f;   
-    int count = 0; 
+    int count = 0;
+    char file[MAX_INPUT];
+    
     if(inv[1] == NULL){
       strcpy(response, "No input detected");
-    }else{
-      f = fopen(inv[1],"r");
-      if(f){
+    }else{      
+      strcpy(file, inv[1]);
+      f = fopen(file, "r");
+      if(f != NULL){      
         count = knowledge_read(f);
-        snprintf(response, n, "Read %d responses from %s", count, inv[1]);
-        fclose(f);
+        fclose(f);      
+        snprintf(response, n, "Read %d responses from %s", count, inv[1]);        
       }else{
+        printf("%s\n", strerror(errno));
         strcpy(response, "Error loading file");
       }
     }
-
     return 0;
 
 }
@@ -344,7 +371,6 @@ int chatbot_do_question(int inc, char *inv[], char *response, int n) {
   int i;
   char userintent[MAX_INTENT];
   strncpy(userintent, inv[0], sizeof(userintent)/sizeof(userintent[0]));
-  snprintf(response,n,"%s",userintent);
   char userentity[MAX_ENTITY];
   char chatbotresponse[MAX_RESPONSE];
   char usernoun[MAX_INPUT];
@@ -357,32 +383,32 @@ int chatbot_do_question(int inc, char *inv[], char *response, int n) {
     strncpy(usernoun, inv[1], sizeof(usernoun)/sizeof(usernoun[0]));
     for (i=1;i < inc ; i++){
       inv[i] = inv[i+1];
-      // snprintf(response, n, "%s", usernoun);
   }
     inv--;
-    // for (i=0;i<inc;i++){
-    //   if (inv[i][inc-1] = "/n"){
-    //     inv[i][inc--] = "/0";
 
-    //   }
-    // }
-     inv[-1] = "\0";
     for (i=2;i <inc;i++){
+      strncpy(userentity,inv[2], sizeof(userentity)/sizeof(userentity[0]));
+      if (inc == 3){
+        continue;
+      }
       strcat(strcat(userentity, " "), inv[i]);
-      
-
     }
-    
-   
-    
   }
 else{
-    // snprintf(response, n, "%s", usernoun);
-}
+for (i=1;i <inc;i++){
+      strncpy(userentity,inv[1], sizeof(userentity)/sizeof(userentity[0]));
+      strcat(strcat(userentity, " "), inv[i]);
+    }
+  }
+
+
   // snprintf(response, n, "%s", userentity);
 
   get_reply_code = knowledge_get(userintent, userentity, chatbotresponse, n);
-  printf("%d",get_reply_code);
+  printf("%d", get_reply_code);
+  if (get_reply_code == KB_OK){
+    snprintf(response, n, "%s", chatbotresponse);
+  }
   return 0;
   }
 
@@ -398,7 +424,6 @@ else{
  *  0, otherwise
  */
 
-// 8 errors monkaS
  
 int chatbot_is_reset(const char *intent) {
       
@@ -406,7 +431,7 @@ int chatbot_is_reset(const char *intent) {
 	  printf("chatbot resetting is starting... \n");  
 	    return 1;
 	}else{
-      return 0;  
+     return 0;  
   }
 
 
@@ -424,21 +449,32 @@ int chatbot_is_reset(const char *intent) {
  *   0 (the chatbot always continues chatting after beign reset)
  */
 int chatbot_do_reset(int inc, char *inv[], char *response, int n) {
-  /*
-    strcpy(response,"chatbot_do_reset is started...");
-    if (smalltalks!=NULL) {
-        Dictionary *pointer = smalltalks;
-        while (smalltalks != NULL){
-          smalltalks -> next;
-          free(pointer);
-          *pointer = smalltalks;
-        }
+  
+  //*headWhat, *headWho, *headWhere
+    strcpy(response,"chatbot_do_reset is starting...");
+    
+    if (headWhat!=NULL) {
+      
+      
+      NODE *pointer = headWhat;
+        do{
+          pointer = pointer->next;
+          
+          headWhat = pointer ;
+          free(headWhat);
+            
+        }while (headWhat != NULL);
+        strcpy(response,"Reset Finish!");
         
+    }else{
+      strcpy(response,"Nothing to reset.");
+    }
+    
 
         
 
-    }  
-    */
+      
+    
     return 0;
 
 }
@@ -510,7 +546,7 @@ int chatbot_do_save(int inc, char *inv[], char *response, int n) {
     knowledge_write(file);
     fclose(file);
 
-    snprintf(response, n, "My knowledge has been saved to %s.", filename);
+    snprintf(response, n, "I have successfully saved my knowledge to %s.", filename);
     return 0;
 }
 
