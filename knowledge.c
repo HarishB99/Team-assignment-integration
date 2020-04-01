@@ -12,7 +12,10 @@
  * You may add helper functions as necessary.
  */
 
-
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include "chat1002.h"
 
 
 
@@ -20,8 +23,6 @@
 /* Modifications, public domain as well, by Antti Haapala, 11/10/17
    - Switched to getc on 5/23/19 */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <errno.h>
 #include <stdint.h>
 
@@ -75,15 +76,6 @@ ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
     (*lineptr)[pos] = '\0';
     return pos;
 }
-
-
-
-
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include "chat1002.h"
 
 /*
  * Get the response to a question.
@@ -140,7 +132,6 @@ int knowledge_get(const char *intent, const char *entity, char *response, int n)
  *   KB_INVALID, if the intent is not a valid question word
  */
 int knowledge_put(const char *intent, const char *entity, const char *response) {
-
     if (compare_token(intent, "what") == 0) {
         NODE *next, *prev;
         // NODE temp = { 
@@ -172,6 +163,10 @@ int knowledge_put(const char *intent, const char *entity, const char *response) 
             next = headWhat;
 
             while (next) {
+                if (compare_token(temp->entity, next->entity) == 0) {
+                    strcpy(next->response, temp->response);
+                    return KB_OK;
+                }
                 prev = next;
                 next = next->next;
             }
@@ -202,6 +197,10 @@ int knowledge_put(const char *intent, const char *entity, const char *response) 
             next = headWhere;
 
             while (next) {
+                if (compare_token(temp->entity, next->entity) == 0) {
+                    strcpy(next->response, temp->response);
+                    return KB_OK;
+                }
                 prev = next;
                 next = next->next;
             }
@@ -233,6 +232,10 @@ int knowledge_put(const char *intent, const char *entity, const char *response) 
             next = headWho;
 
             while (next) {
+                if (compare_token(temp->entity, next->entity) == 0) {
+                    strcpy(next->response, temp->response);
+                    return KB_OK;
+                }
                 prev = next;
                 next = next->next;
             }

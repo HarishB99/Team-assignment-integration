@@ -24,14 +24,19 @@
 
 
 //creating a link-listed node
-typedef struct node{
+struct node {
   char *intent; // insert who, what, where
   char *entity; // rest of the question
   char *response; // response to the question
   struct node *next; // putting it into a list
-} NODE;
+};
 
-NODE *headWhat, *headWho, *headWhere; // head of the list
+typedef struct node NODE;
+
+extern NODE *headWhat;
+extern NODE *headWho;
+extern NODE *headWhere; // head of the list
+
 NODE *pointerWho, *pointerWhat, *pointerWhere; // pointing whatever you want
 NODE *pointer;
 
