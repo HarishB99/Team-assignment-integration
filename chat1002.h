@@ -20,7 +20,7 @@
 #define MAX_ENTITY   64
 
 /* the maximum number of characters allowed in a response (including the terminating null) */
-#define MAX_RESPONSE 700
+#define MAX_RESPONSE 256
 
 
 //creating a link-listed node
@@ -32,7 +32,6 @@ struct node {
 };
 
 typedef struct node NODE;
-
 extern NODE *headWhat;
 extern NODE *headWho;
 extern NODE *headWhere; // head of the list
@@ -45,9 +44,9 @@ NODE *pointerWho, *pointerWhat, *pointerWhere; // pointing whatever you want
 #define KB_NOMEM    -3
 
 /* the maximum number of elements in the trigger array in chatbot.c for is_smalltalk */
-#define MAX_TRIGGER_SIZE    9
+#define MAX_TRIGGER_SIZE    10
 
-#define MAX_SMALLTALK_SIZE    64
+#define MAX_SMALLTALK_SIZE    104
 
 /* functions defined in main.c */
 int compare_token(const char *token1, const char *token2);
@@ -76,5 +75,8 @@ int knowledge_put(const char *intent, const char *entity, const char *response);
 int knowledge_reset();
 int knowledge_read(FILE *f);
 void knowledge_write(FILE *f);
+
+int knowledge_delete(NODE *del);
+
 
 #endif

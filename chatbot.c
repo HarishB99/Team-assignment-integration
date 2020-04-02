@@ -47,8 +47,11 @@
 #include <time.h>
 #include "chat1002.h"
 
+
+
 /* 
  * A structure called Dictionary
+ * This represents one smalltalk in the hashtable
  *  @key - The key string of a pair(unique)
  *
  *  @value - The value corresponding to * a key (Not unique)
@@ -61,11 +64,17 @@ typedef struct Dictionary {
     struct Dictionary *next;
 } Dictionary;
 
+
+/*
+ * The hashtable itself
+ */
 typedef struct {
     Dictionary **smalltalks;
 } Hashtable;
 
-
+char globalIntent[MAX_INTENT] ;
+char globalEntity[MAX_ENTITY] ;
+ 
 unsigned int hash(const char *key) {
     unsigned long int value = 0;
     unsigned int i = 0;
@@ -104,9 +113,11 @@ Dictionary *hashtable_pair(const char *key, const char *value) {
  */
 Hashtable *hashtable_create(void) {
     // allocate table
+	// Create 1 pointer to the hashtable
     Hashtable *hashtable = malloc(sizeof(Hashtable) * 1);
 
     // allocate table entries
+	// Create MAX_SMALLTALK_SIZE number of pointers
     hashtable->smalltalks = malloc(sizeof(Dictionary *) * MAX_SMALLTALK_SIZE);
 
     // set each to null (needed for proper operation)
@@ -117,12 +128,12 @@ Hashtable *hashtable_create(void) {
     return hashtable;
 }
 
-
 /*
  * This function is used whenever we want to add smalltalk into the hashtable.
  * Before we can use this function, we must first do hashtable_create();
  */
 void hashtable_set(Hashtable *hashtable, const char *key, const char *value) {
+	// Take the hash of the given key and find out which slot 
     unsigned int slot = hash(key);
 
     // try to look up an entry set
@@ -157,6 +168,7 @@ void hashtable_set(Hashtable *hashtable, const char *key, const char *value) {
     prev->next = hashtable_pair(key, value);
 }
 
+
 /*
  * print_smalltalk() is responsible for printing the response (value) based on what the smalltalk (key) is that user input. 
  * If the smalltalk is "bye", it returns 1 so that the chatbot can end 
@@ -170,7 +182,18 @@ int print_smalltalk(Hashtable *hashtable, char *full_input, char *response, int 
         }
         if (strcmp(smalltalk->key, full_input) == 0) {
             snprintf(response, n, "%s", smalltalk->value);
-            if (strcmp(full_input, "bye") == 0) {
+            if (strcmp(full_input, "meter") == 0) {
+                snprintf(response, n, "%s", smalltalk->value);
+                char random_word[MAX_RESPONSE] = "";
+                printf("Enter any word:");
+                fgets(random_word, MAX_RESPONSE, stdin);
+                strtok(random_word, "\n");
+                time_t t;
+                // Make rand() more random
+                srand((unsigned) time(&t));
+                int meter_result = rand() % 100;
+                snprintf(response, n, "You are %d%% %s", meter_result, random_word);
+            } else if (strcmp(full_input, "bye") == 0) {
                 return 1;
             }
         }
@@ -186,7 +209,7 @@ int print_smalltalk(Hashtable *hashtable, char *full_input, char *response, int 
  */
 const char *chatbot_botname() {
 
-    return "Pepehands";
+    return "Robot";
 
 }
 
@@ -198,7 +221,7 @@ const char *chatbot_botname() {
  */
 const char *chatbot_username() {
 
-    return "Anon";
+    return "Man";
 
 }
 
@@ -243,11 +266,42 @@ int chatbot_main(int inc, char *inv[], char *response, int n) {
         return chatbot_do_reset(inc, inv, response, n);
     else if (chatbot_is_save(inv[0]))
         return chatbot_do_save(inc, inv, response, n);
-    else {
+    
+    else if (globalEntity != NULL && globalIntent != NULL){
+      char user_response[MAX_INPUT];
+      int k;
+      for(int i=0;i<inc;i++){
+        if (compare_token(inv[i],"is") == 0 || compare_token(inv[i],"are")==0){
+          k = 1;
+          break;
+        }
+        else{
+          k = 0;
+        }
+      }
+        if (k==1){
+          for (int j =0;j<inc;j++){
+            strcat(user_response, inv[j]);
+            strcat(user_response," ");   
+          }
+          knowledge_put(globalIntent,globalEntity, user_response);
+          strcpy(user_response,"");
+          snprintf(response,n,"Aight");
+        }
+        else{
+          snprintf(response, n, "I don't understand \"%s\".", full_input);
+        free(full_input);
+        return 0;
+        }
+        }
+      
+    
+ else {
         snprintf(response, n, "I don't understand \"%s\".", full_input);
         free(full_input);
         return 0;
     }
+  return 0;
 }
 
 
@@ -298,7 +352,7 @@ int chatbot_do_exit(int inc, char *inv[], char *response, int n) {
  */
 int chatbot_is_load(const char *intent) {
 
-    return compare_token(intent, "load") == 0;  
+    return compare_token(intent, "load") == KB_OK;  
 
 }
 
@@ -319,17 +373,28 @@ int chatbot_do_load(int inc, char *inv[], char *response, int n) {
     if(inv[1] == NULL){
       strcpy(response, "No input detected");
     }else{      
-      strcpy(file, inv[1]);
-      f = fopen(file, "r");
-      if(f != NULL){      
-
-        count = knowledge_read(f);
-        fclose(f);      
-        snprintf(response, n, "Read %d responses from %s", count, inv[1]);        
+      if(compare_token(inv[1], "from") == KB_OK){
+        if(inv[2] != NULL){
+          strcpy(file, inv[2]);
+        }else{        
+          strcpy(file, "");
+          strcpy(response, "No input detected");
+        }
       }else{
-        printf("%s\n", strerror(errno));
-        strcpy(response, "Error loading file");
+        strcpy(file, inv[1]);
       }
+      if(file != NULL){        
+        f = fopen(file, "r");
+        if(f != NULL){
+          count = knowledge_read(f);
+          fclose(f);      
+          snprintf(response, n, "Read %d responses from %s", count, file);        
+        }else{
+          printf("%s\n", strerror(errno));
+          strcpy(response, "Error loading file");
+        }      
+      } 
+       
     }
     return 0;
 
@@ -367,6 +432,7 @@ int chatbot_is_question(const char *intent) {
  * Returns:
  *   0 (the chatbot always continues chatting after a question)
  */
+
 int chatbot_do_question(int inc, char *inv[], char *response, int n) {
 
   for (int i =0;inv[i];i++){
@@ -382,6 +448,7 @@ int chatbot_do_question(int inc, char *inv[], char *response, int n) {
   char usernoun[MAX_INPUT];
   int get_reply_code;
   int put_reply_code;
+  char result[255] = {0};
 
   if (inc == 1){
     snprintf(response, n, "Please complete your question.");
@@ -389,36 +456,44 @@ int chatbot_do_question(int inc, char *inv[], char *response, int n) {
 
     if (compare_token(inv[1], "is") == 0 || compare_token(inv[1], "are") == 0){
 
-        strncpy(usernoun, inv[1], sizeof(usernoun)/sizeof(usernoun[0]));
+        strncpy(usernoun, inv[1], sizeof(usernoun)/sizeof(usernoun[0]));        
         for (i=0;i < inc-1 ; i++){
           inv[i] = inv[i+1];
   }
-      i--;
+
+      inc--;
 
         for (i=1;i <inc;i++){
-          // strncpy(userentity, inv[i], sizeof(userentity)/sizeof(userentity[i]));
-          
-          strcat(strcat(userentity, " "), inv[i]);
-      
-    }
-     memmove(userentity, userentity+1,strlen(userentity));
-     
+                   
+          if(i == inc-1){
+            strcat(result, inv[i]);
+          }else{
+            strcat(result, inv[i]);
+            strcat(result, " ");                    
+          }
+    }   
+    strcpy(userentity, result);    
+
        }
       
 else{
   for (i=1;i <inc;i++){
-      strcat(strcat(userentity, " "), inv[i]);
+      if(i==inc-1){ // if i is the last element of inc
+        strcat(result, inv[i]); // concat the word into result
+      }else{ // if i is not the last element of inc
+        strcat(result,inv[i]); // concat the word into result with a space padding
+        strcat(result," ");
+      }
     }
-    memmove(userentity, userentity+1,strlen(userentity));
+    strcpy(userentity, result);    
 }
   
   get_reply_code = knowledge_get(userintent, userentity, chatbotresponse, n);
   if (get_reply_code == KB_OK){
     snprintf(response, n, "%s", chatbotresponse);    
     }else if(get_reply_code == KB_NOTFOUND){
-      if (compare_token(inv[1], "is") == 0){
+      if (compare_token(inv[1], "is") == 0 || compare_token(inv[1], "are") == 0){
         if (compare_token(userintent,"who")==0){
-          printf("Please Complete statement:%s\n", inv[1]);
           snprintf(response, n, "Please complete your question. Etc('Who is the president of singapore')");
         }
         else if (compare_token(userintent,"what")==0){          
@@ -429,16 +504,21 @@ else{
         }
       }
       else{
-        printf("I don't know statement:[1]%s\n", inv[1]);
-        userintent[0] = toupper(userintent[0]);
+        // printf("I don't know statement:[1]%s\n", userentity);
         if (inc ==2){
-            snprintf(response, n, "I don't know. %s is %s?", userintent,  userentity); 
-
+          snprintf(response, n, "I don't know. %s is %s?", userintent,  userentity);             
+          
+           
+          
 
         }
         else{
           snprintf(response, n, "I don't know. %s %s %s?", userintent, usernoun, userentity);  
     }
+    
+          strcpy(globalIntent,userintent);
+          strcpy(globalEntity,userentity);
+          
     }
 
     }
@@ -486,74 +566,19 @@ int chatbot_is_reset(const char *intent) {
  * Returns:
  *   0 (the chatbot always continues chatting after beign reset)
  */
+ /* to count for reset */
+
 int chatbot_do_reset(int inc, char *inv[], char *response, int n) {
-  if ((knowledge_reset(headWhat) + knowledge_reset(headWho) + knowledge_reset(headWhere)) != 0)
-  {
-    snprintf(response, n, "Chatbot reseted.");
 
-    
-  } else {
-      snprintf(response, n, "There is nothing to reset.");
-
-    }
-
-  //knowledge_reset(headWho);
- // knowledge_reset(headWhere);
+  int reset_count = knowledge_reset();
+  //reset_count += knowledge_reset(headWho);
+  //reset_count += knowledge_reset(headWhere);
   
-    //*headWhat, *headWho, *headWhere
-    /*
-    strcpy(response,"chatbot_do_reset is starting...\n");
-    
-    if (headWhat!=NULL) {
-      
-      
-      NODE *pointer = malloc(sizeof(NODE));
-        do{
-          headWhat = headWhat -> next;
-           free(pointer);
-          pointer = headWhat;
-          
-            
-        }while (headWhat != NULL);
-        snprintf(response, n, "headWhat Reset Finish! \n");
-        
-    }else{
-      snprintf(response, n, "Nothing to reset for headWho. \n");
-      
-    }if (headWho!=NULL) {
-      
-      
-      NODE *pointer = malloc(sizeof(NODE));
-        do{
-          headWho = headWho -> next;
-           free(pointer);
-          pointer = headWho;
-          
-            
-        }while (headWho != NULL);
-        snprintf(response, n, "headWho Reset Finish! \n");
-        
-    }else{
-      snprintf(response, n, "Nothing to reset for headWho. \n");
-      
-    }if (headWhere!=NULL) {
-      
-      
-      NODE *pointer = malloc(sizeof(NODE));
-        do{
-          headWhere = headWhere -> next;
-           free(pointer);
-          pointer = headWhat;
-          
-            
-        }while (headWhere != NULL);
-        snprintf(response, n, "headWhere Reset Finish!");
-        
-    }else{
-      snprintf(response, n, "Nothing to reset for headWhere.");
-      
-    }
-    */
+  if(reset_count !=0){
+    snprintf(response, n, "Reset Successful");
+  }else{
+    snprintf(response, n, "There is nothing to reset.");
+  }
     return 0;
 
 }
@@ -584,31 +609,51 @@ int chatbot_is_save(const char *intent) {
  *   0 (the chatbot always continues chatting after saving knowledge)
  */
 int chatbot_do_save(int inc, char *inv[], char *response, int n) {
-    char *filename;
+    char filename[MAX_INPUT - strlen("save ")];
+    filename[0] = '\0';
+
+    /* Check if user only typed in "save" */
     if (inc < 2) {
         snprintf(response, n, "Please provide a name for the file to save my knowledge to.");
         return 0;
     } else {
-        int second_word_is_part_of_speech = compare_token(inv[1], "as") == 0
-         || compare_token(inv[1], "to") == 0;
-          
-        if (second_word_is_part_of_speech) {
+        /* Check if second word is part of speech */
+        if (compare_token(inv[1], "as") == 0 || compare_token(inv[1], "to") == 0) {
+            /* Check if user omitted filename */
             if (inc == 2) {
                 snprintf(response, n, "Please provide a name for the file to save my knowledge to.");
                 return 0;
             }
-            strcpy(filename, inv[2]);
+            /* 
+              Store filename. 
+              Start from inv[2] as second 
+              word is just part of speech
+
+              Extra feature:
+                - spaces in filename will be 
+                  converted to underscores
+            */
+            strcat(filename, inv[2]);
             if (inc > 3) {
                 for (int k = 3; k < inc; k++) {
-                    strcat(filename, " ");
+                    strcat(filename, "_");
                     strcat(filename, inv[k]);
                 }
             }
         } else {
-            strcpy(filename, inv[1]);
+            /* 
+              Store filename. 
+              Start from inv[1] as second 
+              word is NOT part of speech
+
+              Extra feature:
+                - spaces in filename will be 
+                  converted to underscores
+            */
+            strcat(filename, inv[1]);
             if (inc > 2) {
                 for (int k = 2; k < inc; k++) {
-                    strcat(filename, " ");
+                    strcat(filename, "_");
                     strcat(filename, inv[k]);
                 }
             }
@@ -617,7 +662,8 @@ int chatbot_do_save(int inc, char *inv[], char *response, int n) {
 
     FILE *file = fopen(filename, "w");
 
-    if (filename == NULL) {
+    /* Check if file cannot be opened for writing */
+    if (strlen(filename) == 0) {
         snprintf(response, n, "Unable to open '%s' for writing.", filename);
         return 0;
     }
@@ -625,7 +671,7 @@ int chatbot_do_save(int inc, char *inv[], char *response, int n) {
     knowledge_write(file);
     fclose(file);
 
-    snprintf(response, n, "I have successfully saved my knowledge to %s.", filename);
+    snprintf(response, n, "My knowledge has been saved to %s.", filename);
     return 0;
 }
 
@@ -647,7 +693,16 @@ int chatbot_is_smalltalk(const char *intent) {
      * we just need to change the value of MAX_TRIGGER_SIZE
      * Remember to null terminate your trigger array!*/
 
-    char *trigger[MAX_TRIGGER_SIZE] = {"hello", "regressing", "shrek", "bee", "error", "strawberry milk", "trivia", "bye", NULL};
+    char *trigger[MAX_TRIGGER_SIZE] = {"hello",
+                                       "regressing",
+                                       "shrek",
+                                       "bee",
+                                       "error",
+                                       "inspire",
+                                       "trivia",
+									   "meter",
+                                       "bye",
+                                       NULL};
 
     /* Lowercase user input (intent)
      * Use tolower() to convert any uppercase to lowercase
@@ -691,11 +746,15 @@ int chatbot_is_smalltalk(const char *intent) {
  *   1, if the chatbot should stop chatting (e.g. the smalltalk was "goodbye" etc.)
  */
 int chatbot_do_smalltalk(int inc, char *full_input, char *response, int n) {
-	time_t t;
+
+    /*
+     * For the trivia smalltalk
+     */
+    time_t t;
     // Make rand() more random
     srand((unsigned) time(&t));
 
-    const char* trivia[] = {"McDonald's once made bubblegum-flavored broccoli",
+    const char *trivia[] = {"McDonald's once made bubblegum-flavored broccoli",
                             "The first oranges weren't orange",
                             "The Terminator script was sold for $1",
                             "A waffle iron inspired one of the first pairs of Nikes",
@@ -704,8 +763,45 @@ int chatbot_do_smalltalk(int inc, char *full_input, char *response, int n) {
                             "There may be a planet made out of diamonds",
                             "The first computer bug was an actual bug",
                             "Cats have over 100 vocal chords"};
-    const size_t trivia_count = sizeof(trivia)/ sizeof(trivia[0]);
+    const size_t trivia_count = sizeof(trivia) / sizeof(trivia[0]);
 
+    /*
+     * For inspire
+     */
+    const char *inspire[] = {"Knowing that you are a more valuable favourite comedian doesn't make you a more valuable parasite",
+                             "Keep panicking and be unique",
+                             "Try to be the reason your wife becomes friends with dolphins",
+                             "Before a miracle, comes the slaughter",
+                             "Don't go away, just change",
+                             "Wait. It's never too late to get a job.",
+                             "The answer to monarchy is reality",
+                             "Your body is just an old man lost in space",
+                             "Only when you've experienced the negative effects of entertainment, will you be face to face with insight",
+                             "Be amusing",
+                             "The street can be considered a hall of mirrors",
+                             "Try not to think of it as employment. Think of it as your contribution to society",
+                             "Pains can turn into anxiety",
+                             "Life can be incredible",
+                             "Every day is mysterious",
+                             "Little by little, each day as it comes, that's how we should live",
+                             "This world is boundless. It is home to not only you, but to many forms of life. So let's all walk towards the future, hand in hand",
+                             "Life's little surprises are what makes it great. We don't know what's going to happen. It's worrying sometimes, but it's also exciting",
+                             "Every living thing has the freedom to choose the path they walk",
+                             "Nothing that exists is perfect. It is a sad truth, but you can learn from it and begin the journey on a new path",
+                             "Whether a parting be forever or merely for a short time, that is up to you",
+                             "Feel bad about being lazy",
+                             "Death doesn't go well with healthcare",
+                             "Know that there's a little warrior inside each and everyone",
+                             "Daydreaming is the inevitability of physical space reduced to its core",
+                             "The stock market is controlling the media",
+                             "First comes the happy ending, then comes the life"
+                             };
+    const size_t inspire_count = sizeof(inspire) / sizeof(inspire[0]);
+
+
+    /*
+     * Setting the smalltalks
+     */
     Hashtable *hashtable = hashtable_create();
 
     hashtable_set(hashtable, "hello", "darkness my old friend");
@@ -720,34 +816,15 @@ int chatbot_do_smalltalk(int inc, char *full_input, char *response, int n) {
                   "The bee, of course, flies anyways. Because bees don't "
                   "care what humans think is impossible.");
     hashtable_set(hashtable, "error", "I AM ERROR");
-	hashtable_set(hashtable, "strawberry milk", "Listen up! Let's say you "
-                                                "drink too much strawberry "
-                                                "milk, and have to use the "
-                                                "bathroom in the middle of "
-                                                "the night, but it's cold "
-                                                "outside your bed. You "
-                                                "don't want to get up, but "
-                                                "the urge to urinate is "
-                                                "just too strong! You make "
-                                                "up your mind to go! You "
-                                                "run to the bathroom, stand "
-                                                "in front of the toilet, "
-                                                "and let loose! You think "
-                                                "that all your life has led "
-                                                "to this moment! But then "
-                                                "you realize. It isn't the "
-                                                "bathroom! You're still in bed! "
-                                                "That feeling of lukewarm "
-                                                "wetness spreads like "
-                                                "wildfire! But you don't "
-                                                "stop! You can't stop! "
-                                                "That's what I'm talking "
-                                                "about! That's the truth of "
-                                                "the strawberry milk! Do you "
-                                                "get it?");
-	hashtable_set(hashtable, "trivia", trivia[rand() % trivia_count]);
+    hashtable_set(hashtable, "inspire", inspire[rand() % inspire_count]);
+    hashtable_set(hashtable, "trivia", trivia[rand() % trivia_count]);
+	hashtable_set(hashtable, "meter", "");
     hashtable_set(hashtable, "bye", "Goodbye!");
 
+    /*
+     * If user input = "bye", return 1 to end chatbot
+     * Else, return 0
+     */
     int k = print_smalltalk(hashtable, full_input, response, n);
     if (k == 1) {
         free(full_input);
