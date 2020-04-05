@@ -44,7 +44,7 @@ NODE *pointerWho, *pointerWhat, *pointerWhere; // pointing whatever you want
 #define KB_NOMEM    -3
 
 /* the maximum number of elements in the trigger array in chatbot.c for is_smalltalk */
-#define MAX_TRIGGER_SIZE    10
+#define MAX_TRIGGER_SIZE    11
 
 #define MAX_SMALLTALK_SIZE    104
 
@@ -62,7 +62,7 @@ int chatbot_is_load(const char *intent);
 int chatbot_do_load(int inc, char *inv[], char *response, int n);
 int chatbot_is_question(const char *intent);
 int chatbot_do_question(int inc, char *inv[], char *response, int n);
-int chatbot_is_reset(const char *intent);
+int chatbot_is_reset(const char *intent,const char *entity );
 int chatbot_do_reset(int inc, char *inv[], char *response, int n);
 int chatbot_is_save(const char *intent);
 int chatbot_do_save(int inc, char *inv[], char *response, int n);

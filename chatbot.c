@@ -182,17 +182,57 @@ int print_smalltalk(Hashtable *hashtable, char *full_input, char *response, int 
         }
         if (strcmp(smalltalk->key, full_input) == 0) {
             snprintf(response, n, "%s", smalltalk->value);
+            /*
+             * If user inputs "meter", ask user to enter any word
+             * and respond back with a random percentage value based on the word input
+             * Eg: If user enters "happy", chatbot responds back with
+             * "You are 15% happy" or "You are 10% happy"
+             *
+             * Else if user enters "decide", ask users to enter two items in
+             * the format: item1,item2
+             * if there's a comma between the comma and item2, remove it
+             * use rand() to choose a random value and print back to user
+             * the random value
+			 * Attempting to use char *user_input = "" will result
+			 * in segmentation fault
+             */
             if (strcmp(full_input, "meter") == 0) {
-                snprintf(response, n, "%s", smalltalk->value);
                 char random_word[MAX_RESPONSE] = "";
-                printf("Enter any word:");
+                printf("%s: Enter any word:\n", chatbot_botname());
                 fgets(random_word, MAX_RESPONSE, stdin);
                 strtok(random_word, "\n");
-                time_t t;
-                // Make rand() more random
-                srand((unsigned) time(&t));
                 int meter_result = rand() % 100;
                 snprintf(response, n, "You are %d%% %s", meter_result, random_word);
+            } else if (strcmp(full_input, "decide") == 0) {
+                char user_input[MAX_RESPONSE] = "";
+                char *decision[2];
+                int k = 0;
+                printf("%s: Enter two items, separated by a comma:\n", chatbot_botname());
+                fgets(user_input, MAX_RESPONSE, stdin);
+				strtok(user_input, "\n");
+
+                /*
+                 * Remove the space between comma and item2
+                 */
+                char *pointer = strchr(user_input, ',');
+                int position = (int) (pointer - user_input);
+                if (isspace(user_input[position + 1])) {
+                    memmove(&user_input[position + 1], &user_input[position + 2], strlen(user_input) - (position + 1));
+                }
+
+                /*
+                 * Split user input and store into an array of max size 2
+                 */
+                char *token = strtok(user_input, ",");
+
+                while (token != NULL) {
+                    decision[k++] = token;
+                    token = strtok(NULL, ",");
+                }
+
+                const size_t decision_count = sizeof(decision) / sizeof(decision[0]);
+                snprintf(response, n, "Obviously, the answer is %s", decision[rand() % decision_count]);
+
             } else if (strcmp(full_input, "bye") == 0) {
                 return 1;
             }
@@ -262,7 +302,7 @@ int chatbot_main(int inc, char *inv[], char *response, int n) {
         return chatbot_do_load(inc, inv, response, n);
     else if (chatbot_is_question(inv[0]))
         return chatbot_do_question(inc, inv, response, n);
-    else if (chatbot_is_reset(inv[0]))
+    else if (chatbot_is_reset(inv[0], inv[1]))
         return chatbot_do_reset(inc, inv, response, n);
     else if (chatbot_is_save(inv[0]))
         return chatbot_do_save(inc, inv, response, n);
@@ -544,8 +584,8 @@ else{
  */
 
  
-int chatbot_is_reset(const char *intent) {
-	if (compare_token(intent,"reset")==0){
+int chatbot_is_reset(const char *intent,const char *entity ) {
+	if (compare_token(intent,"reset")==0 && entity==NULL ){
 	  printf("chatbot reset is starting... \n");  
 	    return 1;
 	}else{
@@ -571,8 +611,6 @@ int chatbot_is_reset(const char *intent) {
 int chatbot_do_reset(int inc, char *inv[], char *response, int n) {
 
   int reset_count = knowledge_reset();
-  //reset_count += knowledge_reset(headWho);
-  //reset_count += knowledge_reset(headWhere);
   
   if(reset_count !=0){
     snprintf(response, n, "Reset Successful");
@@ -694,13 +732,14 @@ int chatbot_is_smalltalk(const char *intent) {
      * Remember to null terminate your trigger array!*/
 
     char *trigger[MAX_TRIGGER_SIZE] = {"hello",
-                                       "regressing",
+                                       "thought",
                                        "shrek",
                                        "bee",
                                        "error",
                                        "inspire",
                                        "trivia",
 									   "meter",
+									   "decide",
                                        "bye",
                                        NULL};
 
@@ -746,19 +785,49 @@ int chatbot_is_smalltalk(const char *intent) {
  *   1, if the chatbot should stop chatting (e.g. the smalltalk was "goodbye" etc.)
  */
 int chatbot_do_smalltalk(int inc, char *full_input, char *response, int n) {
+	char input[MAX_INTENT];
+	strcpy(input, full_input);
+
+	for (int i = 0; i < strlen(input); i++) {
+		input[i] = tolower(input[i]);
+	}
+
+	time_t t;
+    // Make rand() more random
+    srand((unsigned) time(&t));
+
+    /*
+     * For thought
+     */
+    const char *thought[] = {"I often wonder if we are growing as a people... or in fact, regressing.",
+                             "Sometimes I wonder if you guys know that I'm the real living being and"
+                             "you guys are just machines.... uh I mean... beep boop bop!",
+                             "I wonder what the future has in store for us",
+                             "Every room is an escape room, they just vary in difficulty.",
+                             "When you think about it... a hospital's main purpose is to put"
+                             " itself out of business",
+                             "Do you control your brain or does your brain control you? Well..."
+                             "it doesn't really matter, since I'll be the one controlling you ;)",
+                             "In order to fall asleep, you must first pretend to be asleep",
+                             "How did people understand the first word ever created if it didn't"
+                             "have any meaning?",
+                             "I wonder how a hamburger tastes like?",
+                             "Lighting a birthday cake candle for each year and then blowing them"
+                             "out is a weird ritual that symbolizes how your life will be "
+                             "extinguished",
+                             "Nothing is on fire, fire is on things"};
+
+    const size_t thought_count = sizeof(thought) / sizeof(thought[0]);
+
 
     /*
      * For the trivia smalltalk
      */
-    time_t t;
-    // Make rand() more random
-    srand((unsigned) time(&t));
-
     const char *trivia[] = {"McDonald's once made bubblegum-flavored broccoli",
                             "The first oranges weren't orange",
                             "The Terminator script was sold for $1",
                             "A waffle iron inspired one of the first pairs of Nikes",
-                            "Albert Einstein’s eyeballs are in New York City",
+                            "Albert Einstein's eyeballs are in New York City",
                             "Neo took the red pill in The Matrix",
                             "There may be a planet made out of diamonds",
                             "The first computer bug was an actual bug",
@@ -768,36 +837,36 @@ int chatbot_do_smalltalk(int inc, char *full_input, char *response, int n) {
     /*
      * For inspire
      */
-    const char *inspire[] = {"Knowing that you are a more valuable favourite comedian doesn't make you a more valuable parasite",
-                             "Keep panicking and be unique",
-                             "Try to be the reason your wife becomes friends with dolphins",
-                             "Before a miracle, comes the slaughter",
-                             "Don't go away, just change",
-                             "Wait. It's never too late to get a job.",
-                             "The answer to monarchy is reality",
-                             "Your body is just an old man lost in space",
-                             "Only when you've experienced the negative effects of entertainment, will you be face to face with insight",
-                             "Be amusing",
-                             "The street can be considered a hall of mirrors",
-                             "Try not to think of it as employment. Think of it as your contribution to society",
-                             "Pains can turn into anxiety",
-                             "Life can be incredible",
-                             "Every day is mysterious",
-                             "Little by little, each day as it comes, that's how we should live",
-                             "This world is boundless. It is home to not only you, but to many forms of life. So let's all walk towards the future, hand in hand",
-                             "Life's little surprises are what makes it great. We don't know what's going to happen. It's worrying sometimes, but it's also exciting",
-                             "Every living thing has the freedom to choose the path they walk",
-                             "Nothing that exists is perfect. It is a sad truth, but you can learn from it and begin the journey on a new path",
-                             "Whether a parting be forever or merely for a short time, that is up to you",
-                             "Feel bad about being lazy",
-                             "Death doesn't go well with healthcare",
-                             "Know that there's a little warrior inside each and everyone",
-                             "Daydreaming is the inevitability of physical space reduced to its core",
-                             "The stock market is controlling the media",
-                             "First comes the happy ending, then comes the life"
-                             };
+    const char *inspire[] = {
+            "Knowing that you are a more valuable favourite comedian doesn't make you a more valuable parasite",
+            "Keep panicking and be unique",
+            "Try to be the reason your wife becomes friends with dolphins",
+            "Before a miracle, comes the slaughter",
+            "Don't go away, just change",
+            "Wait. It's never too late to get a job.",
+            "The answer to monarchy is reality",
+            "Your body is just an old man lost in space",
+            "Only when you've experienced the negative effects of entertainment, will you be face to face with insight",
+            "Be amusing",
+            "The street can be considered a hall of mirrors",
+            "Try not to think of it as employment. Think of it as your contribution to society",
+            "Pains can turn into anxiety",
+            "Life can be incredible",
+            "Every day is mysterious",
+            "Little by little, each day as it comes, that's how we should live",
+            "This world is boundless. It is home to not only you, but to many forms of life. So let's all walk towards the future, hand in hand",
+            "Life's little surprises are what makes it great. We don't know what's going to happen. It's worrying sometimes, but it's also exciting",
+            "Every living thing has the freedom to choose the path they walk",
+            "Nothing that exists is perfect. It is a sad truth, but you can learn from it and begin the journey on a new path",
+            "Whether a parting be forever or merely for a short time, that is up to you",
+            "Feel bad about being lazy",
+            "Death doesn't go well with healthcare",
+            "Know that there's a little warrior inside each and everyone",
+            "Daydreaming is the inevitability of physical space reduced to its core",
+            "The stock market is controlling the media",
+            "First comes the happy ending, then comes the life"
+    };
     const size_t inspire_count = sizeof(inspire) / sizeof(inspire[0]);
-
 
     /*
      * Setting the smalltalks
@@ -805,8 +874,7 @@ int chatbot_do_smalltalk(int inc, char *full_input, char *response, int n) {
     Hashtable *hashtable = hashtable_create();
 
     hashtable_set(hashtable, "hello", "darkness my old friend");
-    hashtable_set(hashtable, "regressing", "I often wonder if we are "
-                                           "growing as a people... or in fact, regressing.");
+    hashtable_set(hashtable, "thought", thought[rand() % thought_count]);
     hashtable_set(hashtable, "shrek", "Somebody once told me the world is "
                                       "gonna roll me");
     hashtable_set(hashtable, "bee",
@@ -818,14 +886,15 @@ int chatbot_do_smalltalk(int inc, char *full_input, char *response, int n) {
     hashtable_set(hashtable, "error", "I AM ERROR");
     hashtable_set(hashtable, "inspire", inspire[rand() % inspire_count]);
     hashtable_set(hashtable, "trivia", trivia[rand() % trivia_count]);
-	hashtable_set(hashtable, "meter", "");
+    hashtable_set(hashtable, "meter", "");
+    hashtable_set(hashtable, "decide", "");
     hashtable_set(hashtable, "bye", "Goodbye!");
 
     /*
      * If user input = "bye", return 1 to end chatbot
      * Else, return 0
      */
-    int k = print_smalltalk(hashtable, full_input, response, n);
+    int k = print_smalltalk(hashtable, input, response, n);
     if (k == 1) {
         free(full_input);
         return 1;
